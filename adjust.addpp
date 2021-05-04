@@ -1,0 +1,363 @@
+; Adjust interpreter
+;
+; Commands:
+;
+; @ - Push 0
+; ? - Push the next arg
+; ! - Push the next input char
+;
+; P - Prime test
+; O - Output
+; o - Ord
+; c - Char
+; r - Set radix
+; i - Integer
+; s - String
+;
+; + - Addition
+; * - Multiply
+; - - Subtract
+; / - Divide
+; ^ - Exponent
+; % - Modulo
+; > - Greater than
+; < - Less than
+; = - Equal
+; n - Not equal
+;
+; $ - Swap
+; ~ - Pop
+; . - Duplicate
+; : - Reverse
+;
+; Digits - Append to previous number
+; `...`  - Open/close string
+; I - If
+; F - For
+; E - If/else
+; A - Exec as Add++
+
+; === Command-line interface === ;
+
+flag:?
+
+cmdflag:"c"
+fileflag:"f"
+
+Icmdflag=flag,
+	code:?
+
+Ifileflag=flag,
+	`code,
+	file:?,
+	]readfile
+
+; === Global vars === ;
+
+radix:10
+stack:[]
+
+stdin:""
+stdinchar:""
+stdinindex:0
+
+argv:_
+argvindex:0
+
+Dstdinchar,
+	`stdinchar,
+	]getchar,
+	`stdin,
+	+stdinchar
+
+D,deque,
+	@,
+	BPBP
+
+`argv
+$deque>argv
+
+; === Nilad functions === ;
+
+D,niladat,
+	@*,
+	0b]+
+
+D,niladarg,
+	@*,
+	`argvindex`
+	`argv`:b]+
+	`argvindex`1+
+	`argv`bL%
+	"argvindex"U
+
+D,niladinput,
+	@*,
+	`stdinindex`
+	`stdin`:b]+
+	`stdinindex`1+
+	`stdin`bL%
+	"stdinindex"U
+
+; === Monad functions === ;
+
+D,monadprime,
+	@~*,
+	P
+
+D,monadout,
+	@~*,
+	BhB]
+
+D,monadord,
+	@~*,
+	OB]
+
+D,monadchar,
+	@~*,
+	CB]
+
+D,monadradix,
+	@~*,
+	"radix"U
+	B]
+
+D,monadint,
+	@~*,
+	iB]
+
+D,monadstr,
+	@~*,
+	{str}B]
+
+; === Dyad  functions === ;
+
+D,dyadadd,
+	@~*,
+	+B]
+
+D,dyadmult,
+	@~*,
+	*B]
+
+D,dyadsub,
+	@~*,
+	_B]
+
+D,dyaddiv,
+	@~*,
+	/B]
+
+D,dyadexp,
+	@~*,
+	^B]
+
+D,dyadmod,
+	@~*,
+	%B]
+
+D,dyadgt,
+	@~*,
+	>B]
+
+D,dyadlt,
+	@~*,
+	<B]
+
+D,dyadeq,
+	@~*,
+	=B]
+
+D,dyadneq,
+	@~*,
+	=!B]
+
+; === Stack functions === ;
+
+D,stackswap,
+	@~*,
+	$B]
+
+D,stackpop,
+	@~*,
+	pB]
+
+D,stackdup,
+	@~*,
+	dB]
+
+D,stackrev,
+	@~*,
+	@B]
+
+; === Loop  functions === ;
+
+D,elif,
+	@~*,
+	!Vb[
+	G$:
+	{main}
+	BPBPBPB]
+
+D,exec,
+	@~*,
+	"Script('''"$+
+	"''', [])"+
+	BVB]
+
+D,forloop,
+	@~*,
+	*{main}
+	BPBPB]
+
+D,ifstatement,
+	@~*,
+	!!*{main}
+	BPBPB]
+
+; === List  functions === ;
+
+D,getcmds,
+	*,
+	`$nilad` `$monad` `$dyad` `$stackfunc` `$digits`
+
+D,getfuncs,
+	*,
+	`$runcmd` `$pushstring` `$runloop`
+
+D,getloops,
+	*,
+	`$forloop` `$ifstatement` `$exec` `$elif`
+
+; === Exec  functions === ;
+
+D,nilad,
+	@@*,
+	c `$niladat` `$niladarg` `$niladinput` B]
+	A$@$V
+	G"@"= 1*
+	G"?"= 2*+
+	G"!"= 3*+
+	1_$:$b]$
+	~
+
+D,monad,
+	@@*,
+	c `$monadprime` `$monadout` `$monadord` `$monadchar`
+	  `$monadradix` `$monadint` `$monadstr` B]
+	A$@$V
+	G"P"= 1*
+	G"O"= 2*+
+	G"o"= 3*+
+	G"c"= 4*+
+	G"r"= 5*+
+	G"i"= 6*+
+	G"s"= 7*+
+	1_$:$b]$
+	~
+
+D,dyad,
+	@@*,
+	c `$dyadadd` `$dyadmult` `$dyadsub` `$dyaddiv` `$dyadexp`
+	  `$dyadmod`  `$dyadgt`  `$dyadlt`  `$dyadeq`  `$dyadneq` B]
+	A$@$V
+	G"+"= 1*
+	G"*"= 2*+
+	G"-"= 3*+
+	G"/"= 4*+
+	G"^"= 5*+
+	G"%"= 6*+
+	G">"= 7*+
+	G"<"= 8*+
+	G"="= 9*+
+	G"n"=10*+
+	1_$:$b]$
+	~
+
+D,stackfunc,
+	@@*,
+	c `$stackswap` `$stackpop` `$stackdup` `$stackrev` B]
+	A$@$V
+	G"$"= 1*
+	G"~"= 2*+
+	G"."= 3*+
+	G":"= 4*+
+	1_$:$b]$
+	~
+
+D,digits,
+	@@~*,
+	v$
+	`radix`*+
+	B]
+
+; === Help  functions === ;
+
+D,exectoken,
+	@,
+	`stack`$
+	0$:96C=
+	"IFAE"Ae
+	2*+
+	{getfuncs}:
+	@Ab[$
+	~
+	"stack"U
+
+D,makestr,
+	@~*,
+	96C$+
+	VbUG
+
+D,parse,
+	@*,
+	96C$t
+	2$TbU
+	VB]
+	€{makestr}
+	bUG
+	BFßbi
+
+D,pushstring,
+	@@*,
+	VBPB]
+	G$+
+
+D,runcmd,
+	@@#*,
+	V
+	"@?!"Ge		1*
+	"POocris"Ge	2*+
+	"+*-/^%><"Ge	3*+
+	"$.~:"Ge	4*+
+	"1234567890"Ge	5*+
+	1_
+	{getcmds}:
+	$pa$
+	~
+
+D,runloop,
+	@@#*,
+	V
+	G"F"=	1*
+	G"I"=	2*+
+	G"A"=	3*+
+	G"E"=	4*+
+	1_
+	{getloops}:
+	$b]$~
+
+D,str,
+	@*,
+	J
+
+; === Main === ;
+
+D,main,
+	@,
+	{parse}
+	€{exectoken}
+	c`stack`
+
+`null
+$main> code
